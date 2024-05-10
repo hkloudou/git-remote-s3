@@ -17,7 +17,6 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-
 fn git(pwd: &Path, args: &str) -> Command {
     let my_path = cargo_bin("git-remote-s3");
     let my_path = my_path.parent().unwrap();
@@ -115,6 +114,10 @@ fn git_rev_long(pwd: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
+    use rusoto_core::{HttpClient, Region};
+    use rusoto_credential::StaticProvider;
+    use rusoto_s3::{S3Client, S3};
+
     #[tokio::test]
     async fn integration() {
         // Your asynchronous test code here
@@ -124,6 +127,26 @@ mod tests {
 
     async fn some_async_function() -> Result<(), &'static str> {
         // Simulate async operation
+        // Err("");
+        let region = Region::Custom {
+            name: "oss-cn-wuhan-lr".to_owned(),
+            endpoint: "https://s3.oss-cn-wuhan-lr.aliyuncs.com".to_owned(),
+        };
+        let s3 = S3Client::new_with(
+            HttpClient::new().unwrap(),
+            StaticProvider::new_minimal("".to_string(), "".to_string()),
+            region,
+        );
+
+        match s3.list_buckets().await {
+            Ok(output) => {
+                for bucket in output.buckets.unwrap_or_else(Vec::new) {
+                    println!("Bucket: {}", bucket.name.unwrap_or_default());
+                }
+            }
+            Err(e) => println!("Error listing buckets: {}", e),
+        }
+
         Ok(())
     }
 }
