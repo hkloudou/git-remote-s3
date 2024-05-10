@@ -6,6 +6,7 @@ use rusoto_s3::{
     ListObjectsV2Output, ListObjectsV2Request, PutObjectOutput, PutObjectRequest, S3Client, S3,
 };
 
+use core::ascii;
 use std::fs::{File, OpenOptions};
 use std::io::{copy, Read};
 use std::path::Path;
@@ -18,7 +19,7 @@ pub struct Key {
     pub key: String,
 }
 
-pub fn get(s3: &S3Client, o: &Key, f: &Path) -> Result<GetObjectOutput> {
+pub async fn get(s3: &S3Client, o: &Key, f: &Path) -> Result<GetObjectOutput> {
     let req = GetObjectRequest {
         bucket: o.bucket.to_owned(),
         key: o.key.to_owned(),
@@ -26,7 +27,7 @@ pub fn get(s3: &S3Client, o: &Key, f: &Path) -> Result<GetObjectOutput> {
     };
     let mut result = s3
         .get_object(req)
-        .sync()
+        .await
         .chain_err(|| "couldn't get item")?;
     let body = result.body.take().chain_err(|| "no body")?;
     let mut target = OpenOptions::new()
@@ -38,7 +39,7 @@ pub fn get(s3: &S3Client, o: &Key, f: &Path) -> Result<GetObjectOutput> {
     Ok(result)
 }
 
-pub fn put(s3: &S3Client, f: &Path, o: &Key) -> Result<PutObjectOutput> {
+pub async fn put(s3: &S3Client, f: &Path, o: &Key) -> Result<PutObjectOutput> {
     let mut f = File::open(f).chain_err(|| "open failed")?;
     let mut contents: Vec<u8> = Vec::new();
     f.read_to_end(&mut contents).chain_err(|| "read failed")?;
@@ -49,28 +50,28 @@ pub fn put(s3: &S3Client, f: &Path, o: &Key) -> Result<PutObjectOutput> {
         ..Default::default()
     };
     s3.put_object(req)
-        .sync()
+        .await
         .chain_err(|| "Couldn't PUT object")
 }
 
-pub fn del(s3: &S3Client, o: &Key) -> Result<DeleteObjectOutput> {
+pub async fn del(s3: &S3Client, o: &Key) -> Result<DeleteObjectOutput> {
     let req = DeleteObjectRequest {
         bucket: o.bucket.to_owned(),
         key: o.key.to_owned(),
         ..Default::default()
     };
     s3.delete_object(req)
-        .sync()
+        .await
         .chain_err(|| "Couldn't DELETE object")
 }
 
-pub fn list(s3: &S3Client, k: &Key) -> Result<ListObjectsV2Output> {
+pub async fn list(s3: &S3Client, k: &Key) -> Result<ListObjectsV2Output> {
     let list_obj_req = ListObjectsV2Request {
         bucket: k.bucket.to_owned(),
         prefix: Some(k.key.to_owned()),
         ..Default::default()
     };
     s3.list_objects_v2(list_obj_req)
-        .sync()
+        .await
         .chain_err(|| "Couldn't list items in bucket")
 }
